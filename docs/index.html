@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fffbf5">
+<meta name="description" content="Mix a boba drink, style a crew outfit in Mandarin, and play with prices in a pocket-sized tea shop.">
+<title>Boba Pop-Up</title>
+<link rel="icon" type="image/png" href="./icon.png">
+<link rel="stylesheet" href="./style.css">
+<script src="./art.js" defer></script><script src="./game.js" defer></script>
+</head>
+<body>
+<header class="top"><div class="top-inner">
+<button id="home" class="brand" aria-label="Boba Pop-Up drink counter"><span class="brand-icon" aria-hidden="true"><canvas id="logo" width="40" height="44"></canvas></span>Boba Pop-Up<span class="brand-dot">.</span></button>
+<div class="tools"><button id="sound" class="utility" aria-pressed="false"><span aria-hidden="true">♪</span> <span id="sound-label">Sound off</span></button><button id="help" class="utility"><span class="help-icon" aria-hidden="true">?</span> <span>How to play</span></button></div>
+</div></header>
+<main id="app" tabindex="-1"></main>
+<footer><span>Saved on this device <span aria-hidden="true">·</span> <button type="button" id="reset">Start fresh</button></span></footer>
+<dialog id="dialog"><div id="dialog-content"></div></dialog>
+<noscript>This game uses JavaScript to draw your drink and play the rounds. Open the link in Safari or Chrome with JavaScript on.</noscript>
+</body></html>
