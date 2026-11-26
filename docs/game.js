@@ -1,146 +1,271 @@
-(() => {
-'use strict';
-const $ = id => document.getElementById(id);
-const key = 'boba-pop-up.design.v1';
-const flavors = {strawberry:['Strawberry milk','#ffe1e2'],matcha:['Matcha latte','#e1edcc'],taro:['Taro milk','#eee2f7']};
-const toppings = {pearls:['Tapioca pearls','#eadbdd'],jelly:['Peach jelly','#ffe6d2'],stars:['Star sprinkles','#fff0c4']};
-const colors = {purple:['紫色','zǐsè','purple','#b18acb'],blue:['蓝色','lánsè','blue','#83b7d8']};
-const garments = {sweater:['毛衣','máoyī','sweater'],shirt:['衬衫','chènshān','shirt'],skirt:['裙子','qúnzi','skirt'],coat:['外套','wàitào','coat'],pants:['裤子','kùzi','pants'],dress:['连衣裙','liányīqún','dress']};
-const orders = [['purple','sweater'],['blue','shirt'],['purple','skirt'],['blue','coat'],['purple','pants'],['blue','dress'],['blue','sweater'],['purple','shirt'],['blue','skirt'],['purple','coat'],['blue','pants'],['purple','dress']];
-const defaults = () => ({flavor:'strawberry',topping:'pearls',last:''});
-let design=defaults(), durable=true;
-try {
-  const saved=JSON.parse(localStorage.getItem(key)||'null');
-  if(saved){if(Object.hasOwn(flavors,saved.flavor)) design.flavor=saved.flavor;if(Object.hasOwn(toppings,saved.topping))design.topping=saved.topping;if(['crew','deals'].includes(saved.last))design.last=saved.last;}
-} catch {durable=false;}
-function save(){try{localStorage.setItem(key,JSON.stringify(design));}catch{durable=false;} showStorage();}
-function showStorage(){const f=document.querySelector('footer span');if(f?.firstChild) f.firstChild.nodeValue=durable?'Saved on this device ':'This visit only ';}
-let screen='base', sound=false, context=null, round=null, number=0, dialogOpener=null;
-const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-function act(label,a,value='',cls='primary',extra=''){return '<button type="button" class="'+cls+'" data-act="'+a+'" data-value="'+esc(value)+'" '+extra+'>'+label+'</button>';}
-function meter(label,n){return '<div class="step-row"><span class="step-label">'+label+'</span><span class="meter" aria-hidden="true"><i class="on"></i><i class="'+(n===2?'on':'')+'"></i></span></div>';}
-function intro(title,desc,area){return '<div class="intro">'+(area?'<div class="crumb">'+act('My shop','lobby','','inline')+'<span aria-hidden="true">/</span><small>'+area+'</small></div>':'')+'<h1>'+title+'</h1><p>'+desc+'</p></div>';}
-function canvas(id,cls,alt){return '<canvas id="'+id+'" class="'+cls+'" role="img" aria-label="'+esc(alt)+'"></canvas>';}
-function frame(label,visual,title,sub,chip=''){return '<section class="frame" aria-label="'+label+'"><div class="framebar"><span>'+label+'</span><span class="dots" aria-hidden="true">◆ ▪ ▪</span></div>'+visual+'<div class="details"><div><h3>'+title+'</h3><small>'+sub+'</small></div>'+(chip?'<span class="chip">'+chip+'</span>':'')+'</div></section>';}
-function storefront(){return frame('Drink counter',canvas('shop','stage',flavors[design.flavor][0]+' with '+toppings[design.topping][0]+' on your boba counter'),flavors[design.flavor][0],toppings[design.topping][0]);}
-function panel(html){return '<section class="panel">'+html+'</section>';}
-function layout(left,right){return '<div class="layout">'+left+panel(right)+'</div>';}
-function stamp(id,tint){return '<span class="stamp" style="--tile:'+tint+'" aria-hidden="true"><canvas data-stamp="'+id+'" width="20" height="20"></canvas></span>';}
-function options(set,kind){return '<div class="choices">'+Object.entries(set).map(([id,[name,tint]])=>{const active=design[kind]===id;return act(stamp(id,tint)+'<strong>'+name+'</strong><span class="tail" aria-hidden="true">'+(active?'✓':'')+'</span>','select',id,'choice','aria-pressed="'+active+'"');}).join('')+'</div>';}
-function mixer(){
- const base=screen==='base';
- return intro('Make your signature sip.','Mix a drink for your counter, then open your own little boba shop.')+layout(storefront(),meter('Drink builder  /  '+(base?'1 of 2':'2 of 2'),base?1:2)+'<h2>'+(base?'Choose your base.':'Pick a topping.')+'</h2><p class="sub">'+(base?'Tap a flavor to see it in your cup.':'Try each topping on your drink.')+'</p>'+options(base?flavors:toppings,base?'flavor':'topping')+act(base?'Pick a topping':'Open my shop',base?'topping':'lobby')+(base?'':'<div class="inline-row">'+act('Back to flavors','base','','inline')+'</div>'));
-}
-function activity(name,desc,a,icon,tint){return act(stamp(icon,tint)+'<strong>'+name+'</strong><small>'+desc+'</small>',a,'','choice activity-choice');}
-function lobby(){return intro('Your shop is open.','Pick a short round. You can switch or stop whenever you like.')+layout(storefront(),'<h2>What feels fun?</h2><div class="choices">'+activity('Style the crew','Put together a Mandarin outfit order.','crew','outfit','#eadcf5')+activity('Boba deals','Choose a card and play with prices.','deals','receipt','#d9eee1')+'</div>'+(design.last?'<p class="no-spoiler">Last played here: '+(design.last==='crew'?'Style the crew':'Boba deals')+'</p>':'')+'<div class="inline-row">'+act('Remix my drink','base','','inline')+act('Done for today','done','','inline')+'</div>');}
-function newCrew(free=false){const [wantColor,wantItem]=orders[number%orders.length];round={free,wantColor,wantItem,color:'blue',garment:'shirt',phase:'color',hint:false,feedback:'',chosen:false};screen='crew';design.last='crew';save();}
-function cn(c,g){return '<span lang="zh-Hans">'+colors[c][0]+garments[g][0]+'</span>';}
-function english(c,g){return c+' '+g;}
-function labelPick(a,id,name,on=false){return act(name,a,id,'pick','aria-pressed="'+on+'"');}
-function crewScreen(){
- const r=round,guess=r.phase==='guess',pass=r.phase==='pass',color=r.phase==='color',end=r.phase==='success';
- const visual=frame('Crew fitting room',canvas('crew-art','stage','Crew member wearing a '+english(r.color,r.garment)),r.free?'Your custom outfit':'The fitting mirror',r.free?'Design an outfit, then invite someone to guess.':'Try on a color and a garment.');
- let body='';
- if(pass){body='<h2>Pass it over.</h2><p class="sub">Give the next player the screen. Can they name the outfit in Mandarin?</p><div class="actions">'+act('Ready to guess','guess')+'</div>';}
- else if(guess){const answers=answersFor(r);body='<h2>Name that outfit.</h2><p class="sub">Look at the mirror. Which Mandarin label fits?</p><div class="choices">'+answers.map(([c,g])=>act(cn(c,g),'guessAnswer',c+'|'+g,'guess')).join('')+'</div>';}
- else if(end){body='<h2>'+(r.free?'You guessed it!':'Order ready!')+'</h2><div class="order"><b>'+cn(r.color,r.garment)+'</b><span>'+colors[r.color][1]+' '+garments[r.garment][1]+' · '+english(r.color,r.garment)+'</span></div>'+finishControls('crew');}
- else {
- body=meter(r.free?'Design an outfit':'Customer order',color?1:2)+'<h2>'+(r.free?'Dress the crew.':'Style the crew.')+'</h2>';
- if(!r.free){body+='<div class="order"><b>'+cn(r.wantColor,r.wantItem)+'</b>'+(r.hint?'<span>'+colors[r.wantColor][1]+' '+garments[r.wantItem][1]+' · '+english(r.wantColor,r.wantItem)+'</span>':'')+'</div>'+act(r.hint?'Hide word hint':'Show word hint','hint','','inline');}
- body+='<p class="sub">'+(color?'Choose a color.':'Choose a garment.')+'</p><div class="compact">'+(color?Object.entries(colors).map(([k,v])=>labelPick('color',k,'<span class="swatch" style="background:'+v[3]+'"></span>'+titleCase(k),r.chosen&&r.color===k)):Object.keys(garments).map(k=>labelPick('garment',k,titleCase(k),r.chosen&&r.garment===k))).join('')+'</div>';
- body+=act(color?'Choose a garment':r.free?'Hand it to a friend':'Check the outfit',color?'nextGarment':'checkOutfit','','primary',r.chosen?'':'disabled');
- if(!color)body+='<div class="inline-row">'+act('Change color','recolor','','inline')+'</div>';
- }
- if(r.feedback&&!end){body+='<div class="notice" role="status">'+r.feedback+'</div>';}
- if(!r.free&&!end)body+='<div class="inline-row">'+act('Design one for a friend','free','','inline')+'</div>';
- return intro('Crew wardrobe','Read an outfit order, try a look, and check the mirror.','Style the crew')+layout(visual,body);
-}
-function titleCase(s){return s.charAt(0).toUpperCase()+s.slice(1);}
-function answersFor(r){const other=r.color==='blue'?'purple':'blue';const gs=Object.keys(garments),i=gs.indexOf(r.garment);const options=[[other,r.garment],[r.color,gs[(i+1)%gs.length]],[r.color,r.garment]];const split=(i+(r.color==='blue'?1:0))%3;return options.slice(split).concat(options.slice(0,split));}
-function finishControls(type){return '<div class="actions">'+act('Play again','replay',type)+act('Try the other activity',type==='crew'?'deals':'crew','','secondary')+act('Done for today','done','','inline')+'</div>';}
-function newDeals(){round={phase:'predict',n:1,prediction:''};screen='deals';design.last='deals';save();}
-function costs(n){return [8+2*n,2+4*n];}
-function priceText(n){const [a,b]=costs(n);return a===b?'The lines meet here. Both cards cost $'+a+' for '+n+' drinks.':(a<b?'Card A':'Card B')+' costs $'+Math.abs(a-b)+' less for '+n+(n===1?' drink.':' drinks.');}
-function receipts(n){const [a,b]=costs(n);return '<div class="receipts">'+[['A','$8 to join + $2 per drink',a],['B','$2 to join + $4 per drink',b]].map(([k,s,v])=>'<div class="receipt"><b>Card '+k+'</b><span>'+s+'</span><strong>$'+v+'</strong></div>').join('')+'</div>';}
-function dealsScreen(){const r=round,predict=r.phase==='predict',end=r.phase==='success';
- const visual=predict?frame('Boba card menu',canvas('shop','stage','Your boba drink served at the shop counter'),'Two ways to pay','Both prices include the one-time cost to join.'):frame('Price counter','<div class="price-stage">'+receipts(r.n)+canvas('graph','plot','Graph of total cost by number of drinks. Card A begins at 8 dollars and rises by 2 per drink. Card B begins at 2 dollars and rises by 4 per drink. '+priceText(r.n))+'<div class="linekey"><span class="legendline"></span>Card A <span class="legendline b"></span>Card B</div></div>',r.n+(r.n===1?' drink':' drinks'),priceText(r.n));
- let body='';
- if(predict){body='<h2>Just one drink.</h2><p class="sub">Which card do you think will cost less for your first drink?</p><div class="choices">'+act('<strong>Card A</strong><small>$8 to join + $2 per drink</small>','predict','A','choice deal-choice')+act('<strong>Card B</strong><small>$2 to join + $4 per drink</small>','predict','B','choice deal-choice')+'</div>';}
- else if(end){body='<h2>Your price check</h2><p class="sub">'+priceText(r.n)+'</p><div class="notice">Card B starts cheaper. Each extra drink on Card A adds just $2. The two lines cross at three drinks.</div>'+finishControls('deals');}
- else {body='<h2>Try another drink.</h2><p class="sub">'+(r.n===1&&r.prediction?'You picked Card '+r.prediction+'. A costs $10 and B costs $6 for one drink.':'Change the quantity. When do the receipts match?')+'</p><div class="stepper">'+act('−','count','-1','adjust','aria-label="One fewer drink" '+(r.n===0?'disabled':''))+'<output>'+r.n+(r.n===1?' drink':' drinks')+'</output>'+act('+','count','1','adjust','aria-label="One more drink" '+(r.n===6?'disabled':''))+'</div><div class="notice" role="status">'+priceText(r.n)+'</div><div class="actions">'+act('Finish round','finishDeal')+'</div>';}
- return intro('Pick the better deal.','Predict a price, then watch the two receipts change.','Boba deals')+layout(visual,body);
-}
-function done(){return intro('Shop closed for now.','Your drink will be here when you feel like coming back.')+layout(storefront(),'<h2>All yours.</h2><p class="sub">Your '+flavors[design.flavor][0].toLowerCase()+' with '+toppings[design.topping][0].toLowerCase()+' is on the counter. You can close this tab.</p><div class="actions">'+act('Back to my shop','lobby','','secondary')+'</div>');}
-function render(focus=''){
- const view={base:mixer,topping:mixer,lobby,crew:crewScreen,deals:dealsScreen,done};$('app').innerHTML=view[screen]();
- if($('shop'))BobaArt.shop($('shop'),design.flavor,design.topping);
- if($('crew-art'))BobaArt.crew($('crew-art'),round.color,round.garment);
- if($('graph'))drawGraph();
- document.querySelectorAll('canvas[data-stamp]').forEach(c=>drawStamp(c,c.dataset.stamp));
- if(focus==='heading'){const h=$('app').querySelector('h1');h.tabIndex=-1;h.focus({preventScroll:true});window.scrollTo(0,0);}
- else if(focus){const b=$('app').querySelector(focus);if(b&&!b.disabled)b.focus({preventScroll:true});}
-}
-function drawGraph(){
- const c=$('graph'), scale=2,w=480,h=235; c.width=w*scale;c.height=h*scale;const g=c.getContext('2d');g.scale(scale,scale);
- const left=54,right=454,top=30,bottom=193;const X=n=>left+(right-left)*n/6,Y=p=>bottom-(bottom-top)*p/28;
- g.font='15px sans-serif';g.lineWidth=1;g.fillStyle='#493245';g.textAlign='right';
- for(let p=0;p<=28;p+=4){g.strokeStyle='#dacdd3';g.beginPath();g.moveTo(left,Y(p));g.lineTo(right,Y(p));g.stroke();g.fillText(String(p),left-9,Y(p)+5);}
- g.textAlign='center';for(let i=0;i<=6;i++){g.fillText(String(i),X(i),bottom+18);}
- g.textAlign='left';g.fillText('Cost ($)',left,20);g.textAlign='center';g.fillText('Drinks',(left+right)/2,230);
- const n=round.n;
- g.setLineDash([2,4]);g.strokeStyle='#786370';g.beginPath();g.moveTo(X(n),top);g.lineTo(X(n),bottom);g.stroke();
- ['#a93258','#30675c'].forEach((color,i)=>{g.strokeStyle=color;g.lineWidth=3;g.setLineDash(i?[7,5]:[]);g.beginPath();g.moveTo(X(0),Y(costs(0)[i]));g.lineTo(X(6),Y(costs(6)[i]));g.stroke();g.setLineDash([]);g.fillStyle=color;g.beginPath();g.arc(X(n),Y(costs(n)[i]),i?4:7,0,Math.PI*2);g.fill();});
-}
-function drawStamp(c,id){
- const g=c.getContext('2d');g.imageSmoothingEnabled=false;
- const pix=(x,y,w,h,color)=>{g.fillStyle=color;g.fillRect(x,y,w,h);};
- const patterns={
-  strawberry:['....ggg...','..gggggg..','...grgg...','..rrrrrr..','.rrrrrrrr.','.ryrryrrr.','..rryrry..','..rrrrrr..','...rrrr...','....rr....'],
-  matcha:['........g.','......ggg.','....ggggg.','...gggGgg.','..gggGgg..','.gggGgg...','.ggGgg....','..Ggg.....','.G........','..........'],
-  taro:['....gg....','.....gg...','....ppp...','..ppPPpp..','.ppPPpppp.','.pPPppppp.','.ppppPpp..','..ppppp...','...ppp....','....p.....'],
-  pearls:['..........','..ooo.....','.oOooo....','..oooo.oo.','...oo.oOoo','..ooo..ooo','.oOooo..o.','..ooo.....','..........','..........'],
-  jelly:['..........','...jjj....','..jjjjj...','..JjjJJ...','..JJJJJ...','......jjj.','.....jjjjj','.....JjjJJ','.....JJJJJ','..........'],
-  stars:['..........','....yy....','....yy....','.yyyyyyyy.','..yyyyyy..','...yyyy...','..yyyyyy..','..yy..yy..','..........','..........'],
-  outfit:['...p..p...','..pppppp..','.pppppppp.','.ppPPPPpp.','...pppp...','...pppp...','...pppp...','...PPPP...','..........','..........'],
-  receipt:['..oooooo..','..owwwwo..','..owGGwo..','..owwwwo..','..owGGwo..','..owwwwo..','..owGGwo..','..owwwwo..','..oo..oo..','..........']
- };
- const paint={g:'#57935a',G:'#376349',r:'#d94c68',y:'#eeb54b',p:'#a66fb6',P:'#754f8b',o:'#543747',O:'#926d79',j:'#efa76c',J:'#ca7952',w:'#fffbea'};const sprite=patterns[id]||patterns.pearls;
- sprite.forEach((row,y)=>[...row].forEach((v,x)=>{if(paint[v])pix(x*2,y*2,2,2,paint[v]);}));
-}
-function beep(){if(!sound)return;try{const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;context=context||new Audio();context.resume().catch(()=>{});const o=context.createOscillator(),gain=context.createGain();o.type='sine';o.frequency.value=494;gain.gain.setValueAtTime(.035,context.currentTime);gain.gain.exponentialRampToValueAtTime(.001,context.currentTime+.10);o.connect(gain);gain.connect(context.destination);o.start();o.stop(context.currentTime+.11);}catch{}}
-function navigate(type){screen=type;render('heading');}
-function enter(type){if(type==='crew')newCrew();else newDeals();render('heading');}
-function same(a,v){return '[data-act="'+a+'"][data-value="'+v+'"]';}
-$('app').addEventListener('click',e=>{
- const b=e.target.closest('button[data-act]');if(!b||b.disabled)return;const a=b.dataset.act,v=b.dataset.value;beep();
- if(['base','topping','lobby','done'].includes(a)){navigate(a);return;}
- if(a==='crew'||a==='deals'){enter(a);return;}
- if(a==='select'){design[screen==='base'?'flavor':'topping']=v;save();render(same(a,v));return;}
- if(a==='free'){newCrew(true);render('heading');return;}
- if(a==='replay'){if(v==='crew')number++;enter(v);return;}
- if(a==='hint'){round.hint=!round.hint;render(same(a,''));return;}
- if(a==='color'||a==='garment'){round[a]=v;round.chosen=true;round.feedback='';render(same(a,v));return;}
- if(a==='nextGarment'||a==='recolor'){round.phase=a==='nextGarment'?'garment':'color';round.chosen=false;round.feedback='';render('.compact button');return;}
- if(a==='checkOutfit'){
-  if(round.free){round.phase='pass';round.feedback='';}
-  else if(round.color===round.wantColor&&round.garment===round.wantItem){round.phase='success';round.feedback='';}
-  else{const wrongColor=round.color!==round.wantColor;const garmentOK=round.garment===round.wantItem;
-   round.feedback=(garmentOK?'You found the '+round.garment+'. ':!wrongColor?'You found the color. ':'')+(wrongColor?colors[round.color][0]+' is '+round.color+'. Try '+colors[round.wantColor][0]+' ('+round.wantColor+').':'That’s a '+round.garment+'. Try '+garments[round.wantItem][0]+' ('+round.wantItem+').');
-   round.phase=wrongColor?'color':'garment';round.chosen=false;
-  }render(round.phase==='success'||round.phase==='pass'?'.actions button':'.compact button');return;
- }
- if(a==='guess'){round.phase='guess';render('.guess');return;}
- if(a==='guessAnswer'){if(v===round.color+'|'+round.garment){round.phase='success';round.feedback='';}else{const [col,item]=v.split('|');round.feedback='That label means '+english(col,item)+'. Look at the color and shape again.';}render(round.phase==='success'?'.actions button':same(a,v));return;}
- if(a==='predict'){round.prediction=v;round.n=1;round.phase='explore';render('[data-value="1"]');return;}
- if(a==='count'){round.n=Math.max(0,Math.min(6,round.n+Number(v)));render(same(a,(round.n===0?'1':round.n===6?'-1':v)));return;}
- if(a==='finishDeal'){round.phase='success';render('.actions button');}
-});
-$('sound').onclick=()=>{sound=!sound;$('sound').setAttribute('aria-pressed',String(sound));$('sound-label').textContent=sound?'Sound on':'Sound off';beep();};
-$('home').onclick=()=>navigate('base');
-function openDialog(kind){dialogOpener=document.activeElement;const help=kind==='help';$('dialog-content').innerHTML=help?'<h2 id="dialog-title">How to play</h2><p>Pick a base and a topping, then open the shop. Style the crew to try Mandarin clothing words, or compare two boba deals on a graph.</p><p>Take one round or stay and explore. Choose <b>My shop</b> to switch activities.</p><button id="dismiss" class="primary">Got it</button>':'<h2 id="dialog-title">Start fresh?</h2><p>Reset the drink and last activity saved in this browser.</p><div class="actions"><button class="secondary" id="dismiss">Keep my drink</button><button id="confirm-reset" class="primary">Reset my shop</button></div>';
- const dlg=$('dialog');dlg.setAttribute('aria-labelledby','dialog-title');dlg.showModal();$('dismiss').onclick=()=>dlg.close();if(!help)$('confirm-reset').onclick=()=>{design=defaults();number=0;save();dlg.close();navigate('base');};
-}
-$('dialog').addEventListener('close',()=>{dialogOpener?.focus({preventScroll:true});});
-$('help').onclick=()=>openDialog('help');$('reset').onclick=()=>openDialog('reset');
-BobaArt.cup($('logo'),'strawberry','pearls');showStorage();render();
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const app = $('app');
+  const prefsKey = 'pearl-lane.shop.v2';
+  const oldKey = 'boba-pop-up.design.v1';
+  const flavors = { strawberry: 'Strawberry milk', matcha: 'Matcha latte', taro: 'Taro milk' };
+  const toppings = { pearls: 'Tapioca pearls', jelly: 'Peach jelly', stars: 'Star sprinkles' };
+  const subjects = {
+    math: { title: 'Algebra', name: 'The price counter', text: 'Try a deal, watch the prices change, then design a pair of your own.', lessons: window.PearlAlgebra.lessons },
+    word: { title: 'Mandarin', name: 'The style shop', text: 'Read an order, hear the clues, and style the crew.', lessons: window.PearlMandarin.lessons },
+    story: { title: 'English', name: 'The story studio', text: 'Find the detail that changes the mood.', lessons: [{id:'scene', title:'Edit a sci-fi scene', description:'Change one line and see how the mood shifts.'}] },
+    science: { title: 'Biology', name: 'The field lab', text: 'Make a claim, then see what the evidence can tell you.', lessons: [{id:'fossil', title:'The fossil mystery', description:'Read clues from fossil footprints, then explore a living food web.'}] },
+    world: { title: 'Geography', name: 'The tour desk', text: 'Follow a map clue and build a three-city tour.', lessons: [{id:'tour', title:'Plan a pop-up tour', description:'Pin two cities in New Zealand, then take the shop around the world.'}] }
+  };
+  const lessons = Object.fromEntries(Object.entries(subjects).flatMap(([subject, path]) => path.lessons.map(l => [l.id, {...l, subject}])));
+  const films = {
+    receipts:{id:'receipts', title:'From receipts to a graph'}, graphs:{id:'receipts', title:'From receipts to a graph'}, design:{id:'crossover', title:'Make the lines meet at five'},
+    words:{id:'clothing', title:'Hear the pieces of an outfit order'}, phrases:{id:'clothing', title:'Hear the pieces of an outfit order'}, customers:{id:'clues', title:'Solve a two-clue order'}
+  };
+  const modes = {show:'Show me', try:'Let me try', stretch:'Challenge me'};
+  const object = val => val !== null && typeof val === 'object' && !Array.isArray(val);
+  const validLesson = id => typeof id === 'string' && Object.hasOwn(lessons, id);
+  const clean = val => String(val ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+  const initial = () => ({
+    cup:{flavor:'strawberry',topping:'pearls'}, settings:{sound:false,pinyin:false,english:false,reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches},
+    drafts:{}, counts:{}, skills:{}, recent:null, lastWin:null, storyLine:''
+  });
+  function read(key) {
+    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+  }
+  function loadShop() {
+    const start = initial();
+    const saved = read(prefsKey);
+    const legacy = read(oldKey);
+    const cup = object(saved?.cup) ? saved.cup : legacy;
+    if (cup && Object.hasOwn(flavors,cup.flavor)) start.cup.flavor = cup.flavor;
+    if (cup && Object.hasOwn(toppings,cup.topping)) start.cup.topping = cup.topping;
+    if (!object(saved)) {
+      const id = legacy?.last === 'crew' ? 'words' : legacy?.last === 'deals' ? 'receipts' : '';
+      if (id) start.recent = {id, mode:'show'};
+      return start;
+    }
+    for (const key of Object.keys(start.settings)) {
+      if (typeof saved.settings?.[key] === 'boolean') start.settings[key] = saved.settings[key];
+    }
+    for (const id of Object.keys(lessons)) {
+      const s = saved.skills?.[id];
+      if (object(s)) start.skills[id] = {
+        guided:s.guided === true, explored:s.explored === true,
+        helped:Array.isArray(s.helped) ? s.helped.filter(x => typeof x === 'string') : [],
+        solved:Array.isArray(s.solved) ? s.solved.filter(x => typeof x === 'string') : []
+      };
+      for (const mode of Object.keys(modes)) {
+        const key = `${id}.${mode}`;
+        const count = saved.counts?.[key];
+        const draft = saved.drafts?.[key];
+        if (Number.isSafeInteger(count) && count >= 0) start.counts[key] = count;
+        if (object(draft) && object(draft.state) && draft.round === (start.counts[key] || 0)) start.drafts[key] = draft;
+      }
+    }
+    if (typeof saved.storyLine === 'string') start.storyLine=saved.storyLine.slice(0,280);
+    if (validLesson(saved.recent?.id) && Object.hasOwn(modes,saved.recent.mode)) start.recent = saved.recent;
+    const win=saved.lastWin;
+    if (validLesson(win?.id) && typeof win.message === 'string' && Object.hasOwn(modes,win.mode)) {
+      start.lastWin={id:win.id,mode:win.mode,message:win.message.slice(0,600),
+        suggestId:validLesson(win.suggestId) ? win.suggestId : win.id,
+        suggestMode:Object.hasOwn(modes,win.suggestMode) ? win.suggestMode : 'try',
+        suggestLabel:typeof win.suggestLabel==='string' ? win.suggestLabel.slice(0,120) : 'Try another round'};
+    }
+    return start;
+  }
+  let shop = loadShop();
+  let durable = true;
+  let activeFilm = null;
+  let currentRender = 0;
+  function save() {
+    try { localStorage.setItem(prefsKey,JSON.stringify(shop)); durable = true; } catch { durable = false; }
+    $('storage-note').textContent = durable ? 'Progress saves in this browser.' : 'Progress lasts for this visit. Browser storage is unavailable.';
+  }
+  const learnLink = (id,mode='show') => `#/learn/${id}/${mode}`;
+  const action = (label,href,cls='btn primary') => `<a class="${cls}" href="${href}">${clean(label)}</a>`;
+  const recentLink = () => shop.recent && learnLink(shop.recent.id,shop.recent.mode);
+  function status(id) {
+    const s = shop.skills[id];
+    if (s?.solved.length) return `Solved independently · ${s.solved.length} different ${s.solved.length === 1 ? 'problem' : 'problems'}`;
+    if (s?.helped.length) return 'Practiced with help';
+    if (s?.explored) return 'Explored a challenge';
+    if (s?.guided) return 'Walked through an example';
+    return '';
+  }
+  const pixels = {
+    math:['      aaa       ','    aawwwaa     ','   awwwwwwa     ','   awggggwa     ','   awwwwwwa     ','   awgggwwa     ','   awwwwwwa     ','   awggggwa     ','   awwwwwwa     ','   awgwgwwa     ','   awawawwa     ','    a  a aa     '],
+    word:['    ll  ll      ','   lpp llpl     ','  lphpppphpl    ',' lphpppppphpl   ',' lpphpppphpp l  ','  llpphpppll    ','    pppppp      ','    phpphp      ','    pppppp      ','    llllll      '],
+    story:['  aa      aa    ','  awaaaaaawa    ','  awwwwawwwa    ','  awggwawgwa    ','  awwwwawwwa    ','  awggwawgwa    ','  awwwwawwwa    ','  aaaawaaaaa    ','     aaa        '],
+    science:['      aaaa      ','    aattwtaa    ','   atwwtwwtta   ','  atwtattttata  ','  attatwwtatwa  ','  atwatttatwta  ','  attwaaatwtta  ','   attwwwttta   ','    aattwtaa    ','      aaaa      '],
+    world:['     aaaaa      ','   aabbbggaa    ','  abbbgggwwba   ','  abgggggbbba   ',' abgggbbbgwbba  ',' abbbgbbbggbba  ',' abbbggbbbggba  ','  abbbgggbbba   ','   aabbbbbaa    ','     aaaaa      ','       aa       ','     aaaaaa     ']
+  };
+  function stamp(c) {
+    const lines = pixels[c.dataset.art];
+    if (!lines) return;
+    c.width=16; c.height=16;
+    const ctx=c.getContext('2d');
+    const palette={a:'#584154',w:'#fff9e6',g:'#79a98a',p:'#bb83bb',h:'#e6b9df',l:'#7c567f',b:'#8dbdcf',t:'#cea77e'};
+    lines.forEach((line,y)=>[...line].forEach((ch,x)=>{ if(palette[ch]) {ctx.fillStyle=palette[ch];ctx.fillRect(x,y+2,1,1);} }));
+  }
+  const icon = (subject,cls='') => `<canvas aria-hidden="true" class="${cls}" data-art="${subject}"></canvas>`;
+  function paint() {
+    BobaArt.cup($('logo'),shop.cup.flavor,shop.cup.topping);
+    app.querySelectorAll('canvas[data-art]').forEach(stamp);
+    const counter=$('counter');
+    if(counter) BobaArt.shop(counter,shop.cup.flavor,shop.cup.topping);
+    document.documentElement.dataset.quiet=String(shop.settings.reducedMotion);
+  }
+  function breadcrumb(subject) {
+    return `<div class="crumb"><a href="#/">My shop</a>${subject ? `<span aria-hidden="true">/</span><a href="#/path/${subject}">${subjects[subject].title}</a>` : ''}</div>`;
+  }
+  const title = (heading,copy) => `<div class="titleblock"><h1>${clean(heading)}</h1><p>${clean(copy)}</p></div>`;
+  function nextMode(id) {
+    const s=shop.skills[id];
+    if (!s) return 'show';
+    if (s.solved.length >= 2) return 'stretch';
+    if (s.helped.length && !s.solved.length) return 'show';
+    return 'try';
+  }
+  function feature(id,question) {
+    const lesson=lessons[id], path=subjects[lesson.subject];
+    return `<a class="card ${lesson.subject}" href="${learnLink(id,nextMode(id))}"><div><span class="subject">${path.title}</span><strong>${clean(question)}</strong><span class="go">Play a round</span></div>${icon(lesson.subject,'art-tile')}</a>`;
+  }
+  function home() {
+    const finished=shop.lastWin, recent=shop.recent;
+    const isDraft=recent && shop.drafts[`${recent.id}.${recent.mode}`];
+    const resume=isDraft ? ['Continue '+lessons[recent.id].title, recentLink()] :
+      finished ? [finished.suggestLabel || 'Try another round',learnLink(finished.suggestId && validLesson(finished.suggestId) ? finished.suggestId : finished.id, Object.hasOwn(modes,finished.suggestMode) ? finished.suggestMode : nextMode(finished.id))] :
+      recent ? ['Revisit '+lessons[recent.id].title,recentLink()] : null;
+    const summary=finished ? finished.message : 'Try a little math, style an outfit, or take your shop on tour.';
+    const notes=Object.keys(lessons).filter(id=>status(id));
+    app.innerHTML=`<section class="hero"><div class="hero-copy"><h1>${finished ? 'Welcome back to the shop.' : 'Your boba shop is open.'}</h1><p>${clean(summary)}</p>${resume ? action(resume[0],resume[1]) : ''}</div><div class="hero-art"><canvas id="counter" role="img" aria-label="A ${clean(flavors[shop.cup.flavor])} boba cup at the striped tea counter"></canvas></div></section>
+      <div class="section-head"><h2>Pick a round</h2></div><div class="featured">${feature('receipts','Can you make two boba deals tie?')}${feature('customers','Can you dress a customer from a Mandarin clue?')}</div>
+      <div class="section-head"><h2>Explore the shop</h2></div><div class="library">${Object.entries(subjects).map(([id,s])=>`<a class="shelf" href="#/path/${id}">${icon(id)}${s.title}</a>`).join('')}</div>
+      ${notes.length ? `<details class="notebook"><summary>My practice notebook</summary><ul>${notes.map(id=>`<li>${action(lessons[id].title,learnLink(id,nextMode(id)),'')} · ${clean(status(id))}</li>`).join('')}</ul>${shop.storyLine?`<div class="saved-line"><h3>My last saved scene line</h3><p>${clean(shop.storyLine)}</p></div>`:''}</details>` : ''}`;
+  }
+  function pathView(id) {
+    const path=subjects[id];
+    app.innerHTML=breadcrumb()+title(path.name,path.text)+`<div class="path-grid">${path.lessons.map(l=>`<a href="${learnLink(l.id,nextMode(l.id))}" class="path-card"><div><h2>${clean(l.title)}</h2><p>${clean(l.description)}</p>${status(l.id)?`<small>${clean(status(l.id))}</small>`:''}</div>${icon(id,'art-tile')}</a>`).join('')}</div>`;
+  }
+  function finish(id,mode,outcome) {
+    const s=shop.skills[id] ||= {guided:false,explored:false,helped:[],solved:[]};
+    const item=String(outcome.id);
+    if (mode==='show') s.guided=true;
+    else if (mode==='stretch' && outcome.assisted) s.explored=true;
+    else if (outcome.assisted) {if (!s.helped.includes(item)) s.helped.push(item);}
+    else if (!s.solved.includes(item)) s.solved.push(item);
+    const followOn={receipts:['graphs','Read a new crossing'],graphs:['design','Design my own deal'],design:['receipts','Test another menu'],words:['phrases','Build an outfit order'],phrases:['customers','Style two customers'],customers:['words','Explore five more words']};
+    const next=mode==='stretch' ? followOn[id] : null;
+    const destination=next ? next[0] : id;
+    const suggested=next ? nextMode(destination) : mode==='show' || mode==='stretch' ? 'try' : outcome.assisted ? 'show' : s.solved.length>=2 ? 'stretch' : 'try';
+    const suggestLabel=next ? next[1] : {try: mode==='show'?'Try one on my own':'Try a fresh problem',stretch:'Try a harder challenge',show:'See it step by step'}[suggested];
+    const key=`${id}.${mode}`;
+    shop.counts[key]=(shop.counts[key] || 0)+1;
+    const draft=shop.drafts[key].state;
+    if (id==='scene' && mode==='stretch' && draft.keepLine && typeof draft.line==='string') shop.storyLine=draft.line.trim().slice(0,280);
+    delete shop.drafts[key];
+    shop.lastWin={id,mode,message:String(outcome.message),suggestId:destination,suggestLabel,suggestMode:suggested};
+    shop.recent={id:destination,mode:suggested};
+    save();
+    location.hash='#/round-complete';
+  }
+  function lessonView(id,mode) {
+    const l=lessons[id], key=`${id}.${mode}`;
+    const draft=shop.drafts[key] ||= {round:shop.counts[key] || 0,state:{}};
+    shop.recent={id,mode};save();
+    const film=mode==='show' ? films[id] : null;
+    app.innerHTML=`<div class="lesson-wrap">${breadcrumb(l.subject)}${title(l.title,l.description)}
+      <nav class="modebar" aria-label="Choose how to play">${Object.entries(modes).map(([m,name])=>`<a class="mode" ${mode===m?'aria-current="page"':''} href="${learnLink(id,m)}">${name}</a>`).join('')}</nav>
+      ${film?`<details class="film" id="film"><summary>Watch a short film · ${film.title}</summary><div id="player"></div></details>`:''}
+      <section class="lesson-stage" id="lesson-stage" aria-label="Activity"></section><p class="feedback" id="feedback" role="status"></p>
+      <div class="restline">${action('Explore '+subjects[l.subject].title,'#/path/'+l.subject,'textlink')}${action('Stop here','#/rest','textlink')}</div></div>`;
+    if (film) {
+      $('film').ontoggle=()=>{
+        if (!$('film')) return;
+        if (!$('film').open) {activeFilm?.pause();return;}
+        if (activeFilm) return;
+        $('player').innerHTML=`<video controls playsinline preload="metadata" ${shop.settings.sound?'':'muted'} aria-label="${clean(film.title)}"><source src="./media/films/${film.id}.mp4" type="video/mp4"><track default kind="captions" srclang="en" label="English captions" src="./media/films/${film.id}.vtt"></video><p>Pause to make a prediction. The activity below lets you try each step yourself.</p>`;
+        activeFilm=$('player').querySelector('video');
+        activeFilm.textTracks[0].mode='showing';
+        activeFilm.onplay=()=>window.PearlMandarin.stopAudio?.();
+      };
+    }
+    const ticket=currentRender;
+    const ctx={lessonId:id,mode,round:draft.round,state:draft.state,settings:{...shop.settings, reducedMotion:shop.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches},
+      save(){ if(ticket===currentRender) save(); },
+      feedback(message){ if(ticket===currentRender) $('feedback').textContent=message; },
+      finish(out){ if(ticket===currentRender && shop.drafts[key]===draft) finish(id,mode,out); }
+    };
+    const renderer=l.subject==='math'?window.PearlAlgebra:l.subject==='word'?window.PearlMandarin:window.PearlExplore;
+    $('lesson-stage').addEventListener('click',event=>{if(event.target.closest('.m-listen')) activeFilm?.pause();},true);
+    const resuming=Object.keys(draft.state).length>0;
+    try { renderer.mount($('lesson-stage'),ctx); }
+    catch(error) {
+      if(!resuming) throw error;
+      draft.state={};
+      ctx.state=draft.state;
+      ctx.save();
+      renderer.mount($('lesson-stage'),ctx);
+      ctx.feedback('Your saved step could not be opened. This round has restarted.');
+    }
+  }
+  function ready() {
+    const win=shop.lastWin;
+    if (!win) {home();return;}
+    app.innerHTML=`<section class="result">${icon(lessons[win.id].subject,'done-icon')}<h1>Round complete.</h1><p>${clean(win.message)}</p><div class="actionrow">${action(win.suggestLabel,learnLink(validLesson(win.suggestId) ? win.suggestId : win.id,win.suggestMode))}${action('Back to my shop','#/','btn')}${action('Done for today','#/rest','textlink')}</div></section>`;
+  }
+  function cup() {
+    function picks(kind,options) {
+      return Object.entries(options).map(([id,val])=>`<button data-kind="${kind}" data-id="${id}" aria-pressed="${shop.cup[kind]===id}">${val}</button>`).join('');
+    }
+    app.innerHTML=breadcrumb()+title('Mix your signature sip.','Pick a base and a topping for the drink on your counter.')+`<div class="cupgrid"><canvas class="cup-preview" id="counter" role="img" aria-label="Your custom drink"></canvas><div class="panel"><fieldset><legend>Milk tea</legend><div class="choices">${picks('flavor',flavors)}</div></fieldset><fieldset><legend>Topping</legend><div class="choices">${picks('topping',toppings)}</div></fieldset><p id="drink-name" role="status"></p>${action('Back to my shop','#/')}</div></div>`;
+    function update() {
+      const msg=`${flavors[shop.cup.flavor]} with ${toppings[shop.cup.topping].toLowerCase()}`;
+      $('drink-name').textContent=msg;$('counter').setAttribute('aria-label',msg);
+    }
+    update();
+    app.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{
+      shop.cup[b.dataset.kind]=b.dataset.id;save();paint();update();
+      app.querySelectorAll('[data-kind]').forEach(x=>x.setAttribute('aria-pressed',String(shop.cup[x.dataset.kind]===x.dataset.id)));
+    });
+  }
+  function rest() {
+    app.innerHTML=`<section class="result">${icon('world','done-icon')}<h1>See you next shift.</h1><p>${durable?'Your spot is saved in this browser. You can close this tab.':'You can take a break and return to this open tab.'}</p><div class="actionrow">${recentLink()?action('Back to my round',recentLink()):''}${action('My shop','#/','btn')}</div></section>`;
+  }
+  function render(focus=true) {
+    currentRender++;
+    activeFilm?.pause();activeFilm=null;
+    window.PearlMandarin.stopAudio?.();
+    const [,page,id,mode]=location.hash.split('/');
+    if (page==='path' && Object.hasOwn(subjects,id)) pathView(id);
+    else if (page==='learn' && validLesson(id) && Object.hasOwn(modes,mode)) lessonView(id,mode);
+    else if (page==='round-complete') ready();
+    else if (page==='cup') cup();
+    else if (page==='rest') rest();
+    else home();
+    paint();
+    if (focus) {const h=app.querySelector('h1');h.tabIndex=-1;h.focus({preventScroll:true});window.scrollTo(0,0);}
+    document.title=`${app.querySelector('h1').textContent} · Pearl Lane`;
+  }
+  const dlg=$('dialog');
+  function openDialog(kind) {
+    const body=$('dialog-content');
+    if(kind==='settings') {
+      const labels={sound:'Start films with sound',pinyin:'Show Mandarin pinyin',english:'Show English word support',reducedMotion:'Reduce motion'};
+      body.innerHTML=`<h2 id="dialog-title">Your settings</h2><p>Choose what helps you play.</p>${Object.entries(labels).map(([id,label])=>`<label><input type="checkbox" data-pref="${id}" ${shop.settings[id]?'checked':''}>${label}</label>`).join('')}<div class="actionrow"><button class="primary" id="close">Done</button><button class="textlink" id="reset">Start fresh</button></div>`;
+      body.querySelectorAll('[data-pref]').forEach(b=>b.onchange=()=>{shop.settings[b.dataset.pref]=b.checked;save();document.documentElement.dataset.quiet=String(shop.settings.reducedMotion);});
+      $('reset').onclick=()=>openDialog('reset');
+    } else if(kind==='reset'){
+      body.innerHTML='<h2 id="dialog-title">Start a new shop?</h2><p>This clears the drink, settings, and practice saved in this browser.</p><div class="actionrow"><button id="close">Keep my shop</button><button id="confirm" class="primary">Reset my shop</button></div>';
+      $('confirm').onclick=()=>{shop=initial();try{localStorage.removeItem(oldKey);}catch{}save();dlg.close();if(location.hash==='#/')render();else location.hash='#/';};
+    } else {
+      body.innerHTML='<h2 id="dialog-title">How to play</h2><p>Pick a round or browse a subject. Choose <b>Show me</b> for a worked example, <b>Let me try</b> for a fresh problem, or <b>Challenge me</b> to experiment.</p><p>Stop after one step if you like. This browser remembers where you paused.</p><button class="primary" id="close">Got it</button>';
+    }
+    if(!dlg.open) dlg.showModal();
+    $('close').onclick=()=>{dlg.close();if(kind==='settings' && location.hash.startsWith('#/learn/')) render(false);};
+    $('close').focus();
+  }
+  $('settings').onclick=()=>openDialog('settings');$('help').onclick=()=>openDialog('help');
+  dlg.addEventListener('cancel',()=>{ if(location.hash.startsWith('#/learn/')) setTimeout(()=>render(false),0); });
+  document.querySelector('.skip').onclick=e=>{e.preventDefault();app.focus();};
+  window.addEventListener('hashchange',()=>render());
+  window.addEventListener('pagehide',()=>{activeFilm?.pause();window.PearlMandarin.stopAudio?.();});
+  save();render(false);
 })();

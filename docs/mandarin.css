@@ -1,0 +1,38 @@
+.m-studio {
+  color: inherit;
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+.m-studio * {box-sizing: border-box;}
+.m-studio :is(h3,p) {margin: 0;}
+.m-prompt {font-size:clamp(1.25rem,3vw,1.65rem);line-height:1.18;}
+.m-copy,.m-note {max-width:65ch;line-height:1.5;}
+.m-note {background:#f4edf8;color:#4f3d58;border-radius:.75rem;padding:.7rem .85rem;}
+.m-choices {display:flex;flex-wrap:wrap;align-items:stretch;gap:.5rem;}
+.m-studio button {font:inherit;min-height:44px;cursor:pointer;line-height:1.32;}
+.m-button,.m-primary,.m-chip,.m-listen,.m-option,.m-look {
+  border:1.5px solid #9a7986;color:#463240;background:#fffaf8;
+  border-radius:.8rem;padding:.58rem .83rem;justify-self:start;font-weight:650;
+}
+.m-primary {background:#62364e;color:#fff7f2;border-color:#62364e;font-weight:700;}
+.m-listen {background:#f1e7f6;color:#513657;border-color:#ccb5d4;font-weight:650;}
+.m-studio button:hover {border-color:#774367;}
+.m-studio button:focus-visible {outline:3px solid #624394;outline-offset:3px;}
+.m-chip[aria-pressed=true],.m-option[aria-pressed=true] {background:#ffe1d0;border:2px solid #895644;}
+.m-word,.m-ticket,.m-rack,.m-flash,.m-field {display:grid;gap:.45rem;align-content:start;}
+.m-ticket,.m-flash {background:#fff1dc;border:1.5px solid #d6b9a3;border-radius:1rem;padding:1rem;}
+.m-han {font-family:system-ui,sans-serif;font-size:clamp(1.55rem,4vw,2.5rem);font-weight:700;line-height:1.35;overflow-wrap:anywhere;}
+.m-label,.m-example {font-family:system-ui,sans-serif;font-size:1.3rem;font-weight:650;line-height:1.5;}
+.m-pinyin,.m-gloss {display:block;font-size:1rem;color:#5d4851;line-height:1.45;}
+.m-option {display:grid;align-content:center;gap:.25rem;}
+.m-option .m-han {font-size:1.45rem;}
+.m-chip {display:inline-flex;align-items:center;gap:.45rem;}
+.m-chip [lang] {font-size:1.16rem;}
+.m-swatch {height:1.1rem;width:1.1rem;border-radius:50%;border:1px solid #65545e;}
+.m-layout {display:flex;flex-wrap:wrap;gap:.9rem;align-items:start;}
+.m-rack {flex:1 1 13rem;}
+.m-portrait {height:auto;max-width:100%;width:min(100%,18rem);border-radius:.75rem;image-rendering:pixelated;border:1px solid #ba9894;}
+.m-field-name {font-weight:700;}
+.m-look {display:grid;gap:.5rem;width:min(44%,12.5rem);}
+.m-look .m-portrait {width:100%;}
